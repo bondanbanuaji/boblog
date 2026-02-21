@@ -1,0 +1,87 @@
+import { e as createAstro, f as createComponent, k as renderComponent, r as renderTemplate, m as maybeRenderHead, h as addAttribute, l as renderScript } from '../../chunks/astro/server_7-zI95CH.mjs';
+import 'piccolore';
+import { $ as $$AdminLayout } from '../../chunks/AdminLayout_B0N_SyUx.mjs';
+import { d as db } from '../../chunks/db_CcHuIs8X.mjs';
+export { renderers } from '../../renderers.mjs';
+
+const $$Astro = createAstro("https://boblog.vercel.app");
+const prerender = false;
+const $$Index = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
+  Astro2.self = $$Index;
+  const url = new URL(Astro2.request.url);
+  const page = parseInt(url.searchParams.get("page") || "1");
+  const status = url.searchParams.get("status") || "";
+  const search = url.searchParams.get("search") || "";
+  const perPage = 10;
+  const where = {};
+  if (status) where.status = status;
+  if (search) {
+    where.OR = [
+      { title: { contains: search, mode: "insensitive" } },
+      { slug: { contains: search, mode: "insensitive" } }
+    ];
+  }
+  const [articles, total] = await Promise.all([
+    db.article.findMany({
+      where,
+      include: {
+        author: { select: { displayName: true, avatar: true } },
+        category: { select: { name: true, color: true } },
+        _count: { select: { comments: true, likes: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * perPage,
+      take: perPage
+    }),
+    db.article.count({ where })
+  ]);
+  const totalPages = Math.ceil(total / perPage);
+  const statusColors = {
+    DRAFT: "badge-ghost",
+    PUBLISHED: "badge-success",
+    SCHEDULED: "badge-warning",
+    ARCHIVED: "badge-error"
+  };
+  return renderTemplate`${renderComponent($$result, "AdminLayout", $$AdminLayout, { "title": "Artikel" }, { "default": async ($$result2) => renderTemplate`  ${maybeRenderHead()}<div class="flex flex-col sm:flex-row gap-4 justify-between mb-6"> <div class="flex gap-2 flex-wrap"> <a href="/admin/articles"${addAttribute(["btn btn-sm", !status ? "btn-primary" : "btn-ghost"], "class:list")}>
+Semua (${total})
+</a> ${["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"].map((s) => renderTemplate`<a${addAttribute(`/admin/articles?status=${s}`, "href")}${addAttribute(["btn btn-sm", status === s ? "btn-primary" : "btn-ghost"], "class:list")}> ${s} </a>`)} </div> <a href="/admin/articles/new" class="btn btn-primary btn-sm gap-2"> <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path> </svg>
+Tulis Artikel Baru
+</a> </div>  <form class="form-control mb-6"> <div class="flex gap-2"> <input type="text" name="search"${addAttribute(search, "value")} placeholder="Cari artikel..." class="input input-bordered input-sm flex-1"> <button type="submit" class="btn btn-sm btn-primary">Cari</button> </div> </form>  <div class="overflow-x-auto"> <table class="table table-sm"> <thead> <tr> <th>Judul</th> <th>Author</th> <th>Kategori</th> <th>Status</th> <th>Views</th> <th>Tanggal</th> <th>Aksi</th> </tr> </thead> <tbody> ${articles.length === 0 ? renderTemplate`<tr> <td colspan="7" class="text-center py-8 opacity-50"> ${search ? `Tidak ada artikel dengan kata kunci "${search}"` : "Belum ada artikel."} <br> <a href="/admin/articles/new" class="btn btn-primary btn-sm mt-2">
+Buat Artikel Pertama
+</a> </td> </tr>` : articles.map((article) => renderTemplate`<tr class="hover"> <td> <div class="max-w-xs"> <p class="font-medium truncate">${article.title}</p> <p class="text-xs opacity-50 font-mono truncate">/${article.slug}</p> </div> </td> <td> <div class="flex items-center gap-2"> <div class="avatar"> <div class="w-6 rounded-full"> <img${addAttribute(
+    article.author.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(article.author.displayName)}&size=24`,
+    "src"
+  )}${addAttribute(article.author.displayName, "alt")}> </div> </div> <span class="text-sm">${article.author.displayName}</span> </div> </td> <td> ${article.category ? renderTemplate`<span class="badge badge-sm"${addAttribute(
+    article.category.color ? `background-color: ${article.category.color}20; color: ${article.category.color}; border-color: ${article.category.color}40` : "",
+    "style"
+  )}> ${article.category.name} </span>` : renderTemplate`<span class="text-xs opacity-40">—</span>`} </td> <td> <span${addAttribute(`badge badge-sm ${statusColors[article.status] || ""}`, "class")}> ${article.status} </span> </td> <td class="text-sm">${article.viewCount}</td> <td class="text-xs opacity-60"> ${new Date(article.createdAt).toLocaleDateString("id-ID")} </td> <td> <div class="flex gap-1"> <a${addAttribute(`/admin/articles/${article.slug}/edit`, "href")} class="btn btn-ghost btn-xs">
+✏️
+</a> ${article.status === "PUBLISHED" && renderTemplate`<a${addAttribute(`/blog/${article.slug}`, "href")} target="_blank" class="btn btn-ghost btn-xs">
+👁️
+</a>`} <button class="btn btn-ghost btn-xs text-error delete-btn"${addAttribute(article.id, "data-id")}${addAttribute(article.title, "data-title")}>
+🗑️
+</button> </div> </td> </tr>`)} </tbody> </table> </div>  ${totalPages > 1 && renderTemplate`<div class="flex justify-center mt-6"> <div class="join"> ${page > 1 && renderTemplate`<a${addAttribute(`/admin/articles?page=${page - 1}${status ? `&status=${status}` : ""}${search ? `&search=${search}` : ""}`, "href")} class="join-item btn btn-sm">
+«
+</a>`} ${Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => renderTemplate`<a${addAttribute(`/admin/articles?page=${p}${status ? `&status=${status}` : ""}${search ? `&search=${search}` : ""}`, "href")}${addAttribute(["join-item btn btn-sm", p === page && "btn-active"], "class:list")}> ${p} </a>`)} ${page < totalPages && renderTemplate`<a${addAttribute(`/admin/articles?page=${page + 1}${status ? `&status=${status}` : ""}${search ? `&search=${search}` : ""}`, "href")} class="join-item btn btn-sm">
+»
+</a>`} </div> </div>`} <dialog id="delete-modal" class="modal"> <div class="modal-box"> <h3 class="font-bold text-lg">🗑️ Arsipkan Artikel</h3> <p class="py-4">
+Yakin ingin mengarsipkan artikel <strong id="delete-title"></strong>? Artikel masih bisa
+        dipulihkan nanti.
+</p> <div class="modal-action"> <form method="dialog"> <button class="btn btn-ghost">Batal</button> </form> <button id="confirm-delete" class="btn btn-error">Arsipkan</button> </div> </div> </dialog> ${renderScript($$result2, "/home/boba/Projects/ngaduburit-bareng-astro/boblog/src/pages/admin/articles/index.astro?astro&type=script&index=0&lang.ts")} ` })}`;
+}, "/home/boba/Projects/ngaduburit-bareng-astro/boblog/src/pages/admin/articles/index.astro", void 0);
+
+const $$file = "/home/boba/Projects/ngaduburit-bareng-astro/boblog/src/pages/admin/articles/index.astro";
+const $$url = "/admin/articles";
+
+const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: $$Index,
+  file: $$file,
+  prerender,
+  url: $$url
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const page = () => _page;
+
+export { page };

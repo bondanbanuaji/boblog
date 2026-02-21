@@ -1,0 +1,328 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// AUTH MODELS
+// ============================================
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  username       String    @unique
+  displayName    String
+  hashedPassword String?
+  avatar         String?
+  bio            String?
+  role           Role      @default(READER)
+  emailVerified  Boolean   @default(false)
+  banned         Boolean   @default(false)
+  banReason      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  sessions      Session[]
+  oauthAccounts OAuthAccount[]
+  articles      Article[]
+  comments      Comment[]
+  likes         Like[]
+  bookmarks     Bookmark[]
+  notifications Notification[]
+  followers     Follow[]          @relation("Following")
+  following     Follow[]          @relation("Follower")
+
+  @@index([email])
+  @@index([username])
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OAuthAccount {
+  providerId     String
+  providerUserId String
+  userId         String
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([providerId, providerUserId])
+  @@index([userId])
+}
+
+// ============================================
+// CONTENT MODELS
+// ============================================
+
+model Article {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  content     String        @db.Text
+  excerpt     String?       @db.Text
+  thumbnail   String?
+  status      ArticleStatus @default(DRAFT)
+  publishedAt DateTime?
+  scheduledAt DateTime?
+  readingTime Int?
+  viewCount   Int           @default(0)
+  metaTitle   String?
+  metaDesc    String?
+  ogImage     String?
+  canonicalUrl String?
+
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  tags      TagOnArticle[]
+  comments  Comment[]
+  likes     Like[]
+  bookmarks Bookmark[]
+  revisions ArticleRevision[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([status, publishedAt])
+}
+
+model ArticleRevision {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([articleId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  color       String?
+  icon        String?
+  articles    Article[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+}
+
+model Tag {
+  id       String         @id @default(cuid())
+  name     String         @unique
+  slug     String         @unique
+  articles TagOnArticle[]
+  createdAt DateTime @default(now())
+
+  @@index([slug])
+}
+
+model TagOnArticle {
+  articleId String
+  tagId     String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId])
+}
+
+// ============================================
+// INTERACTION MODELS
+// ============================================
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  approved  Boolean  @default(true)
+  spam      Boolean  @default(false)
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  likes     Like[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([articleId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model Like {
+  id         String   @id @default(cuid())
+  reaction   String   @default("like") // like, love, fire, laugh, sad
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  articleId  String?
+  article    Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  commentId  String?
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, articleId])
+  @@unique([userId, commentId])
+  @@index([articleId])
+  @@index([commentId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, articleId])
+  @@index([userId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// ============================================
+// NOTIFICATION MODEL
+// ============================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  message   String
+  read      Boolean          @default(false)
+  link      String?
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+}
+
+// ============================================
+// NEWSLETTER MODEL
+// ============================================
+
+model Newsletter {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  confirmed     Boolean  @default(false)
+  confirmToken  String?  @unique
+  unsubToken    String   @unique @default(cuid())
+  subscribedAt  DateTime @default(now())
+
+  @@index([email])
+}
+
+// ============================================
+// MEDIA LIBRARY
+// ============================================
+
+model Media {
+  id        String   @id @default(cuid())
+  filename  String
+  url       String
+  publicId  String?  // Cloudinary public ID
+  mimeType  String
+  size      Int
+  width     Int?
+  height    Int?
+  alt       String?
+  createdAt DateTime @default(now())
+}
+
+// ============================================
+// SITE SETTINGS
+// ============================================
+
+model SiteSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String @db.Text
+
+  @@index([key])
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String?
+  details   String?  @db.Text
+  userId    String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  AUTHOR
+  READER
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum NotificationType {
+  COMMENT
+  REPLY
+  LIKE
+  MENTION
+  NEW_ARTICLE
+  FOLLOW
+  SYSTEM
+}

@@ -1,0 +1,20 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import ArticleForm from "@/components/admin/ArticleForm";
+import { db } from "@/lib/db";
+
+export const prerender = false;
+
+const [categories, tags] = await Promise.all([
+  db.category.findMany({ orderBy: { name: "asc" } }),
+  db.tag.findMany({ orderBy: { name: "asc" } }),
+]);
+---
+
+<AdminLayout title="Tulis Artikel Baru">
+  <ArticleForm
+    client:load
+    categories={categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
+    tags={tags.map((t) => ({ id: t.id, name: t.name, slug: t.slug }))}
+  />
+</AdminLayout>

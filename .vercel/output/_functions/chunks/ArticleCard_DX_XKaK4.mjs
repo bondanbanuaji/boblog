@@ -1,0 +1,15 @@
+import { e as createAstro, f as createComponent, m as maybeRenderHead, h as addAttribute, r as renderTemplate } from './astro/server_7-zI95CH.mjs';
+import 'piccolore';
+import 'clsx';
+import { t as timeAgo } from './utils_TLTR-e7h.mjs';
+
+const $$Astro = createAstro("https://boblog.vercel.app");
+const $$ArticleCard = createComponent(($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
+  Astro2.self = $$ArticleCard;
+  const { article } = Astro2.props;
+  return renderTemplate`${maybeRenderHead()}<div class="card bg-base-200 shadow hover:shadow-xl transition-all duration-300 h-full flex flex-col group"> <figure class="px-4 pt-4 shrink-0"> <a${addAttribute(`/blog/${article.slug}`, "href")} class="w-full relative overflow-hidden rounded-xl aspect-[16/9] block"> ${article.thumbnail ? renderTemplate`<img${addAttribute(article.thumbnail, "src")}${addAttribute(article.title, "alt")} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">` : renderTemplate`<div class="w-full h-full bg-base-300 flex items-center justify-center group-hover:scale-105 transition-transform duration-500"> <span class="text-4xl opacity-20">📝</span> </div>`} ${article.category && renderTemplate`<div class="absolute top-2 left-2"> <span class="badge badge-sm font-medium shadow-sm backdrop-blur-sm bg-base-100/80 border-none"${addAttribute(article.category.color ? `color: ${article.category.color}` : "", "style")}> ${article.category.name} </span> </div>`} </a> </figure> <div class="card-body p-4 pt-4 flex-1 flex flex-col"> <a${addAttribute(`/blog/${article.slug}`, "href")} class="block group-hover:text-primary transition-colors"> <h2 class="card-title text-xl font-bold line-clamp-2 md:leading-tight mb-2"> ${article.title} </h2> </a> <p class="text-sm opacity-70 line-clamp-3 mb-4 flex-1"> ${article.excerpt} </p> <div class="flex items-center justify-between mt-auto pt-2 border-t border-base-300"> <a${addAttribute(`/author/${article.author.username}`, "href")} class="flex items-center gap-2 hover:opacity-80 transition-opacity"> <div class="avatar"> <div class="w-7 rounded-full bg-base-300"> <img${addAttribute(article.author.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(article.author.displayName)}&size=32`, "src")}${addAttribute(article.author.displayName, "alt")} width="28" height="28"> </div> </div> <div class="flex flex-col"> <span class="text-xs font-medium">${article.author.displayName}</span> <span class="text-[10px] opacity-60">${timeAgo(article.publishedAt || article.createdAt)}</span> </div> </a> <div class="text-[10px] opacity-50 flex items-center gap-1 font-medium bg-base-300/50 px-2 py-1 rounded"> <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path> </svg> ${article.readingTime} mnt baca
+</div> </div> </div> </div>`;
+}, "/home/boba/Projects/ngaduburit-bareng-astro/boblog/src/components/blog/ArticleCard.astro", void 0);
+
+export { $$ArticleCard as $ };

@@ -1,0 +1,158 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ArticleCard from "@/components/blog/ArticleCard.astro";
+import { db } from "@/lib/db";
+
+export const prerender = false;
+
+const { username } = Astro.params;
+
+if (!username) {
+  return Astro.redirect("/404");
+}
+
+const url = new URL(Astro.request.url);
+const page = parseInt(url.searchParams.get("page") || "1");
+const perPage = 9;
+
+const [author, articles, totalArticles] = await Promise.all([
+  db.user.findUnique({
+    where: { username },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      avatar: true,
+      bio: true,
+      createdAt: true,
+    },
+  }),
+  db.article.findMany({
+    where: { author: { username }, status: "PUBLISHED" },
+    include: {
+      author: { select: { displayName: true, avatar: true, username: true } },
+      category: { select: { name: true, slug: true, color: true } },
+    },
+    orderBy: { publishedAt: "desc" },
+    skip: (page - 1) * perPage,
+    take: perPage,
+  }),
+  db.article.count({
+    where: { author: { username }, status: "PUBLISHED" },
+  }),
+]);
+
+if (!author) {
+  return Astro.redirect("/404");
+}
+
+const totalPages = Math.ceil(totalArticles / perPage);
+
+// Build current URL without page param for pagination
+const getPageUrl = (p: number) => {
+  const newUrl = new URL(url.href);
+  newUrl.searchParams.set("page", p.toString());
+  return newUrl.pathname + newUrl.search;
+};
+---
+
+<BaseLayout title={`Penulis: ${author.displayName}`}>
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <!-- Author Profile Header -->
+    <div
+      class="bg-base-200 p-8 rounded-3xl flex flex-col sm:flex-row gap-8 items-center sm:items-start text-center sm:text-left mb-16 shadow-inner"
+    >
+      <div class="avatar">
+        <div
+          class="w-32 rounded-full shadow-lg ring-4 ring-primary/20 ring-offset-base-200 ring-offset-4"
+        >
+          <img
+            src={author.avatar ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(author.displayName)}&size=128&background=random`}
+            alt={author.displayName}
+          />
+        </div>
+      </div>
+      <div class="flex-1">
+        <h1 class="text-3xl md:text-4xl font-bold mb-2">{author.displayName}</h1>
+        <p class="font-mono text-sm opacity-50 mb-4">@{author.username}</p>
+        <p class="text-lg opacity-80 max-w-2xl mb-6">
+          {
+            author.bio ||
+              "Seorang penulis yang gemar berbagi wawasan baru tentang teknologi dan pemrograman."
+          }
+        </p>
+        <div class="flex flex-wrap gap-4 justify-center sm:justify-start">
+          <div
+            class="stat bg-base-100 rounded-2xl shadow-sm border border-base-300 w-auto px-6 py-2"
+          >
+            <div class="stat-title text-xs">Total Artikel</div>
+            <div class="stat-value text-2xl text-primary">{totalArticles}</div>
+          </div>
+          <div
+            class="stat bg-base-100 rounded-2xl shadow-sm border border-base-300 w-auto px-6 py-2"
+          >
+            <div class="stat-title text-xs">Bergabung Sejak</div>
+            <div class="stat-value text-lg font-medium mt-1">
+              {
+                new Date(author.createdAt).toLocaleDateString("id-ID", {
+                  month: "long",
+                  year: "numeric",
+                })
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Author's Articles -->
+    <h2 class="text-2xl font-bold mb-8 border-b border-base-200 pb-4">
+      Artikel oleh {author.displayName}
+    </h2>
+
+    {
+      articles.length === 0 ? (
+        <div class="text-center py-16 bg-base-200/50 rounded-2xl border border-dashed border-base-300">
+          <p class="opacity-50">Belum ada artikel yang dipublikasikan.</p>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {articles.map((article) => (
+            <ArticleCard article={article as any} />
+          ))}
+        </div>
+      )
+    }
+
+    <!-- Pagination -->
+    {
+      totalPages > 1 && (
+        <div class="flex justify-center mt-8">
+          <div class="join shadow-md">
+            <a
+              href={page > 1 ? getPageUrl(page - 1) : "#"}
+              class={`join-item btn ${page <= 1 ? "btn-disabled" : "bg-base-100"}`}
+            >
+              «
+            </a>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <a
+                href={getPageUrl(p)}
+                class={`join-item btn ${p === page ? "btn-primary" : "bg-base-100"}`}
+              >
+                {p}
+              </a>
+            ))}
+            <a
+              href={page < totalPages ? getPageUrl(page + 1) : "#"}
+              class={`join-item btn ${page >= totalPages ? "btn-disabled" : "bg-base-100"}`}
+            >
+              »
+            </a>
+          </div>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

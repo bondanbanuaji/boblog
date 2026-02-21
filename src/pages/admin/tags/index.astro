@@ -1,0 +1,125 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { db } from "@/lib/db";
+
+export const prerender = false;
+
+const tags = await db.tag.findMany({
+  orderBy: { name: "asc" },
+  include: {
+    _count: { select: { articles: true } },
+  },
+});
+---
+
+<AdminLayout title="Tag">
+  <div class="flex justify-between items-center mb-6">
+    <p class="text-sm opacity-60">{tags.length} tag</p>
+    <button
+      class="btn btn-primary btn-sm gap-2"
+      onclick="document.getElementById('add-tag-modal')?.showModal()"
+    >
+      + Tambah Tag
+    </button>
+  </div>
+
+  <div class="flex flex-wrap gap-3">
+    {
+      tags.length === 0 ? (
+        <div class="w-full text-center py-12 opacity-50">
+          <p class="text-lg mb-2">Belum ada tag</p>
+          <button
+            class="btn btn-primary btn-sm"
+            onclick="document.getElementById('add-tag-modal')?.showModal()"
+          >
+            Buat Tag Pertama
+          </button>
+        </div>
+      ) : (
+        tags.map((tag) => (
+          <div class="badge badge-lg gap-2 p-4">
+            <span class="font-medium">{tag.name}</span>
+            <span class="badge badge-sm badge-ghost">{tag._count.articles}</span>
+          </div>
+        ))
+      )
+    }
+  </div>
+
+  <!-- Add Tag Modal -->
+  <dialog id="add-tag-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg mb-4">Tambah Tag</h3>
+      <form id="tag-form" class="space-y-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Nama</span></label>
+          <input
+            type="text"
+            name="name"
+            class="input input-bordered"
+            placeholder="Nama Tag"
+            required
+          />
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Slug</span></label>
+          <input
+            type="text"
+            name="slug"
+            class="input input-bordered"
+            placeholder="nama-tag"
+            required
+          />
+        </div>
+        <div id="tag-form-error" class="alert alert-error hidden"></div>
+        <div class="modal-action">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            onclick="document.getElementById('add-tag-modal')?.close()">Batal</button
+          >
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script>
+    const form = document.getElementById("tag-form");
+    const nameInput = form?.querySelector('input[name="name"]') as HTMLInputElement;
+    const slugInput = form?.querySelector('input[name="slug"]') as HTMLInputElement;
+
+    nameInput?.addEventListener("input", () => {
+      slugInput.value = nameInput.value
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/[\s_-]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    });
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form as HTMLFormElement);
+      const data = Object.fromEntries(formData);
+      try {
+        const res = await fetch("/api/tags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error);
+        }
+        window.location.reload();
+      } catch (err: any) {
+        const errEl = document.getElementById("tag-form-error");
+        if (errEl) {
+          errEl.textContent = err.message;
+          errEl.classList.remove("hidden");
+        }
+      }
+    });
+  </script>
+</AdminLayout>

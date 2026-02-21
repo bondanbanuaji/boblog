@@ -1,0 +1,376 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Interactions from "@/components/blog/Interactions";
+import Comments from "@/components/blog/Comments";
+import { db } from "@/lib/db";
+import { timeAgo } from "@/lib/utils";
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect("/blog");
+}
+
+const user = Astro.locals.user;
+
+const article = await db.article.findUnique({
+  where: { slug: slug as string, status: "PUBLISHED" },
+  include: {
+    author: { select: { displayName: true, username: true, avatar: true, bio: true } },
+    category: { select: { name: true, slug: true, color: true } },
+    tags: {
+      include: {
+        tag: { select: { name: true, slug: true } },
+      },
+    },
+    _count: { select: { likes: true, bookmarks: true } },
+  },
+});
+
+if (!article) {
+  return Astro.redirect("/404");
+}
+
+let userLikedInitially = false;
+let userBookmarkedInitially = false;
+
+if (user) {
+  const [like, bookmark] = await Promise.all([
+    db.like.findUnique({ where: { userId_articleId: { userId: user.id, articleId: article.id } } }),
+    db.bookmark.findUnique({
+      where: { userId_articleId: { userId: user.id, articleId: article.id } },
+    }),
+  ]);
+  userLikedInitially = !!like;
+  userBookmarkedInitially = !!bookmark;
+}
+
+// Update view count in background
+db.article
+  .update({
+    where: { id: article.id },
+    data: { viewCount: { increment: 1 } },
+  })
+  .catch(console.error);
+
+// Render HTML safe config
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: article.title,
+  image: article.thumbnail || article.ogImage || [],
+  datePublished: article.publishedAt?.toISOString(),
+  dateModified: article.updatedAt.toISOString(),
+  author: [
+    {
+      "@type": "Person",
+      name: article.author.displayName,
+      url: `/author/${article.author.username}`,
+    },
+  ],
+};
+---
+
+<BaseLayout
+  title={article.metaTitle || article.title}
+  description={article.metaDesc || article.excerpt || undefined}
+  ogImage={article.ogImage || article.thumbnail || undefined}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    {article.canonicalUrl && <link rel="canonical" href={article.canonicalUrl} />}
+  </Fragment>
+
+  <article class="max-w-4xl mx-auto px-4 py-8 md:py-12">
+    <!-- Breadcrumbs -->
+    <div class="text-sm breadcrumbs mb-6 hidden md:block">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/blog">Blog</a></li>
+        {
+          article.category && (
+            <li>
+              <a href={`/blog?category=${article.category.slug}`}>{article.category.name}</a>
+            </li>
+          )
+        }
+        <li class="opacity-60 max-w-xs truncate">{article.title}</li>
+      </ul>
+    </div>
+
+    <!-- Article Header -->
+    <header class="mb-10 text-center animate-slide-up">
+      {
+        article.category && (
+          <a
+            href={`/blog?category=${article.category.slug}`}
+            class="badge badge-lg font-bold mb-6 border-none text-white shadow-md hover:scale-105 transition-transform"
+            style={`background-color: ${article.category.color || "var(--p)"};`}
+          >
+            {article.category.name}
+          </a>
+        )
+      }
+
+      <h1
+        class="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6 tracking-tight text-balance"
+      >
+        {article.title}
+      </h1>
+
+      <p class="text-xl md:text-2xl opacity-70 mb-8 max-w-3xl mx-auto text-balance">
+        {article.excerpt}
+      </p>
+
+      <div
+        class="flex flex-wrap items-center justify-center gap-6 opacity-80 border-y border-base-200 py-4"
+      >
+        <a
+          href={`/author/${article.author.username}`}
+          class="flex items-center gap-3 hover:text-primary transition-colors"
+        >
+          <div class="avatar">
+            <div class="w-10 rounded-full bg-base-300">
+              <img
+                src={article.author.avatar ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(article.author.displayName)}&size=80`}
+                alt={article.author.displayName}
+              />
+            </div>
+          </div>
+          <div class="text-left">
+            <div class="font-bold text-sm leading-tight">{article.author.displayName}</div>
+            <div class="text-xs opacity-70">Author</div>
+          </div>
+        </a>
+
+        <div class="divider divider-horizontal hidden sm:flex mx-0"></div>
+
+        <div class="flex items-center gap-2 text-sm">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            ></path>
+          </svg>
+          <time datetime={article.publishedAt?.toISOString()}>
+            {
+              new Date(article.publishedAt || article.createdAt).toLocaleDateString("id-ID", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })
+            }
+          </time>
+        </div>
+
+        <div class="flex items-center gap-2 text-sm">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          {article.readingTime} mnt baca
+        </div>
+
+        <div class="flex items-center gap-2 text-sm">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            ></path>
+          </svg>
+          {article.viewCount} views
+        </div>
+      </div>
+    </header>
+
+    <!-- Thumbnail -->
+    {
+      article.thumbnail && (
+        <div class="mb-12 rounded-3xl overflow-hidden shadow-2xl animate-fade-in relative group aspect-21/9">
+          <img
+            src={article.thumbnail}
+            alt={article.title}
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+        </div>
+      )
+    }
+
+    <!-- Main Content & Sidebar -->
+    <div class="flex flex-col lg:flex-row gap-12">
+      <!-- Article Content -->
+      <div class="lg:w-2/3">
+        {/* TipTap content rendering */}
+        <div
+          class="prose prose-lg md:prose-xl max-w-none prose-img:rounded-2xl prose-img:shadow-lg prose-headings:font-bold prose-a:text-primary mb-12"
+        >
+          <Fragment set:html={article.content} />
+        </div>
+
+        <!-- Tags & Interactions -->
+        <div class="mt-12 pt-6 border-t border-base-200">
+          <div class="flex flex-col sm:flex-row gap-6 justify-between items-start sm:items-center">
+            {
+              article.tags.length > 0 ? (
+                <div class="flex flex-wrap gap-2 items-center">
+                  <span class="text-sm font-bold mr-2">Tags:</span>
+                  {article.tags.map(({ tag }) => (
+                    <a
+                      href={`/blog?tag=${tag.slug}`}
+                      class="badge badge-lg badge-outline hover:badge-primary transition-colors"
+                    >
+                      #{tag.name}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div />
+              )
+            }
+
+            <Interactions
+              client:load
+              articleSlug={article.slug}
+              initialLikes={article._count.likes}
+              initialBookmarks={article._count.bookmarks}
+              isLoggedIn={!!user}
+              userLikedInitially={userLikedInitially}
+              userBookmarkedInitially={userBookmarkedInitially}
+            />
+          </div>
+        </div>
+
+        <!-- Author Bio Box -->
+        <div
+          class="mt-12 bg-base-200 p-8 rounded-3xl flex flex-col sm:flex-row gap-6 items-center sm:items-start text-center sm:text-left"
+        >
+          <div class="avatar">
+            <div
+              class="w-24 rounded-full shadow-lg ring ring-primary ring-offset-base-100 ring-offset-2"
+            >
+              <img
+                src={article.author.avatar ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(article.author.displayName)}&size=100`}
+                alt={article.author.displayName}
+              />
+            </div>
+          </div>
+          <div>
+            <h3 class="text-2xl font-bold mb-2">Ditulis oleh {article.author.displayName}</h3>
+            <p class="opacity-70 mb-4">
+              {
+                article.author.bio ||
+                  "Seorang penulis yang gemar berbagi wawasan baru tentang teknologi dan pemrograman."
+              }
+            </p>
+            <a
+              href={`/author/${article.author.username}`}
+              class="btn btn-outline btn-sm rounded-full">Lihat semua artikel</a
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Sticky Sidebar -->
+      <aside class="lg:w-1/3 space-y-8">
+        <div class="sticky top-24 space-y-8">
+          <!-- Share Box -->
+          <div class="card bg-base-100 border border-base-200 shadow-sm">
+            <div class="card-body p-6">
+              <h3 class="font-bold text-lg mb-4">Bagikan Artikel</h3>
+              <div class="flex gap-2">
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(`https://boblog.vercel.app/blog/${article.slug}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-square btn-outline hover:bg-black hover:text-white"
+                >
+                  𝕏
+                </a>
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://boblog.vercel.app/blog/${article.slug}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-square btn-outline hover:bg-[#1877F2] hover:text-white border-transparent"
+                >
+                  f
+                </a>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`${article.title} - https://boblog.vercel.app/blog/${article.slug}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-square btn-outline hover:bg-[#25D366] hover:text-white border-transparent"
+                >
+                  Wa
+                </a>
+                <button
+                  class="btn btn-square btn-outline"
+                  onclick={`navigator.clipboard.writeText(window.location.href); alert('Tautan disalin ke clipboard!');`}
+                >
+                  🔗
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Newsletter Widget -->
+          <div class="card bg-primary text-primary-content shadow-lg">
+            <div class="card-body p-6">
+              <h3 class="card-title text-xl mb-2">Boba Newsletter 📬</h3>
+              <p class="text-sm opacity-90 mb-4">
+                Dapatkan update artikel terbaru langsung di email Anda setiap minggu.
+              </p>
+              <form class="flex flex-col gap-2">
+                <input
+                  type="email"
+                  placeholder="Email Anda"
+                  class="input input-sm text-base-content w-full"
+                  required
+                />
+                <button class="btn btn-sm btn-neutral w-full">Subscribe</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Comments Section -->
+    <div class="mt-16 border-t border-base-200 pt-16 max-w-3xl" id="comments">
+      <Comments client:load articleId={article.id} isLoggedIn={!!user} />
+    </div>
+  </article>
+</BaseLayout>
