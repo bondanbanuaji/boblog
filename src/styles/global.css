@@ -177,3 +177,141 @@ pre,
 	-webkit-box-orient: vertical;
 	overflow: hidden;
 }
+
+/* ============================================
+   THEME TRANSITION
+   ============================================ */
+
+/* Disable default fade animation of View Transitions */
+[data-theme-transition]::view-transition-group(root) {
+	animation-duration: 0.8s;
+}
+
+[data-theme-transition]::view-transition-old(root),
+[data-theme-transition]::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+/* The old theme scales down and fades for depth effect */
+[data-theme-transition]::view-transition-old(root) {
+	z-index: 1;
+	animation: cinematic-theme-depth 0.8s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+/* The new theme is layered on top and expands */
+[data-theme-transition]::view-transition-new(root) {
+	z-index: 9999;
+}
+
+@keyframes cinematic-theme-depth {
+	from {
+		transform: scale(1);
+		opacity: 1;
+	}
+
+	to {
+		transform: scale(0.98);
+		opacity: 0.9;
+	}
+}
+
+/* ============================================
+   3D & FLOATING UTILITIES (Revamp)
+   ============================================ */
+
+/* Enable 3D perspective context */
+.perspective-1000 {
+	perspective: 1000px;
+}
+
+.preserve-3d {
+	transform-style: preserve-3d;
+}
+
+.backface-hidden {
+	backface-visibility: hidden;
+}
+
+/* Glass depth effect */
+.glass-depth {
+	background: oklch(var(--b1) / 0.6);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	border: 1px solid oklch(var(--bc) / 0.08);
+	box-shadow:
+		0 4px 6px -1px oklch(0 0 0 / 0.1),
+		0 10px 15px -3px oklch(0 0 0 / 0.1),
+		inset 0 1px 0 0 oklch(1 0 0 / 0.1);
+}
+
+/* Multi-layer text shadow for 3D effect */
+.text-3d {
+	text-shadow:
+		0 1px 0 oklch(var(--bc) / 0.2),
+		0 2px 0 oklch(var(--bc) / 0.15),
+		0 3px 0 oklch(var(--bc) / 0.1),
+		0 8px 15px oklch(0 0 0 / 0.3);
+}
+
+/* Animations */
+@keyframes float {
+
+	0%,
+	100% {
+		transform: translateY(0) translateZ(0);
+	}
+
+	50% {
+		transform: translateY(-15px) translateZ(20px);
+	}
+}
+
+@keyframes float-slow {
+
+	0%,
+	100% {
+		transform: translateY(0) rotate(0);
+	}
+
+	50% {
+		transform: translateY(-8px) rotate(2deg);
+	}
+}
+
+@keyframes blob-spin {
+	from {
+		transform: rotate(0deg) scale(1);
+	}
+
+	50% {
+		transform: rotate(180deg) scale(1.1);
+	}
+
+	to {
+		transform: rotate(360deg) scale(1);
+	}
+}
+
+.animate-float {
+	animation: float 5s ease-in-out infinite;
+}
+
+.animate-float-slow {
+	animation: float-slow 7s ease-in-out infinite;
+}
+
+.animate-blob {
+	animation: blob-spin 25s linear infinite;
+}
+
+/* Animated background gradient mesh */
+.bg-mesh {
+	background-color: oklch(var(--b1));
+	background-image:
+		radial-gradient(circle at 15% 50%, oklch(var(--p) / 0.12), transparent 40%),
+		radial-gradient(circle at 85% 30%, oklch(var(--s) / 0.15), transparent 40%),
+		radial-gradient(circle at 50% 80%, oklch(var(--a) / 0.1), transparent 45%);
+	background-size: 100% 100%;
+	background-attachment: fixed;
+}

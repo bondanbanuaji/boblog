@@ -1,0 +1,100 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { db } from "@/lib/db";
+
+const categories = await db.category.findMany({
+  include: {
+    _count: {
+      select: { articles: true },
+    },
+  },
+  orderBy: {
+    name: "asc",
+  },
+});
+
+// For 3D floating layout
+const emojis = ["🚀", "💡", "🎨", "🔧", "💻", "📚", "🎮", "🌟", "🔥", "🌍"];
+---
+
+<BaseLayout title="BoBlog - Jelajahi Kategori" description="Pilih topik yang menarik bagi Anda dari berbagai kategori yang tersedia di BoBlog.">
+  <main class="max-w-7xl mx-auto px-4 py-16 preserve-3d min-h-screen">
+    
+    <!-- Top Header -->
+    <div class="text-center mb-20 animate-fade-in perspective-1000">
+      <div class="inline-flex items-center gap-3 px-6 py-2 glass-depth rounded-full text-sm font-bold text-secondary mb-8 animate-float-slow" style="transform: translateZ(40px);">
+        <span class="flex h-3 w-3 relative">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
+        </span>
+        Navigasi Topik
+      </div>
+      <h1 class="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-3d">
+        Jelajahi <span class="bg-linear-to-r from-secondary to-accent bg-clip-text text-transparent">Kategori</span>
+      </h1>
+      <p class="text-lg md:text-xl opacity-70 max-w-2xl mx-auto leading-relaxed">
+        Pilih bidang minat Anda dan temukan kumpulan artikel mendalam dari para penulis kami.
+      </p>
+    </div>
+
+    <!-- 3D Category Grid -->
+    {categories.length === 0 ? (
+      <div class="glass-depth p-20 rounded-[3rem] text-center border-dashed border-2 border-base-content/10 animate-fade-in perspective-1000">
+        <div class="text-8xl mb-8 animate-float">📂</div>
+        <h3 class="text-3xl font-black mb-4 text-3d">Belum Ada Kategori</h3>
+        <p class="opacity-60 max-w-md mx-auto mb-10 text-lg">
+          Administrator belum menambahkan kategori apapun ke dalam sistem. Silakan kembali lagi nanti.
+        </p>
+        <a href="/" class="btn btn-primary px-10 rounded-full shadow-xl">Kembali ke Beranda</a>
+      </div>
+    ) : (
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 perspective-1000">
+        {categories.map((cat, i) => (
+          <a
+            href={`/blog?category=${cat.slug}`}
+            class="group relative h-64 glass-depth rounded-[2.5rem] p-8 flex flex-col justify-between overflow-hidden preserve-3d hover:-translate-y-4 hover:shadow-[0_20px_50px_-15px_oklch(var(--s)/.4)] transition-all duration-500 border border-base-content/5"
+            style={`animation-delay: ${i * 100}ms; transform: translateZ(${30 + i * 5}px) rotateY(${(i % 2 ? 1 : -1) * 2}deg);`}
+          >
+            <!-- Background Glow -->
+            <div 
+              class="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity duration-500"
+              style={cat.color ? `background: ${cat.color};` : ""}
+            ></div>
+            
+            <div class="relative z-10 preserve-3d" style="transform: translateZ(20px);">
+              <div 
+                class="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl mb-6 shadow-xl group-hover:scale-110 transition-transform duration-500"
+                style={cat.color ? `background: ${cat.color}15; color: ${cat.color}; border: 1px solid ${cat.color}30;` : "background: oklch(var(--b2));"}
+              >
+                {emojis[i % emojis.length]}
+              </div>
+              <h2 class="text-2xl font-black tracking-tight text-3d group-hover:text-primary transition-colors">
+                {cat.name}
+              </h2>
+            </div>
+            
+            <div class="relative z-10 flex items-center justify-between preserve-3d" style="transform: translateZ(10px);">
+              <span class="text-sm font-bold opacity-60 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-base-content/20"></span>
+                {cat._count.articles} Artikel
+              </span>
+              <div class="w-10 h-10 rounded-full bg-base-content/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-content transition-all duration-300">
+                 →
+              </div>
+            </div>
+
+            <!-- Dynamic Shadow Pattern -->
+            <div class="absolute inset-x-0 bottom-0 h-1 bg-linear-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-20 transition-opacity" style={cat.color ? `color: ${cat.color}` : ""}></div>
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- Decorative Elements -->
+    <div class="fixed inset-0 pointer-events-none z-[-1]">
+       <!-- Static perspective lines/dots maybe? -->
+       <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[150px] animate-blob"></div>
+       <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] animate-blob" style="animation-delay: 10s;"></div>
+    </div>
+  </main>
+</BaseLayout>

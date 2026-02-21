@@ -12,96 +12,143 @@ interface Props {
 const { article } = Astro.props;
 ---
 
-<div
-  class="card bg-base-200 shadow hover:shadow-xl transition-all duration-300 h-full flex flex-col group"
->
-  <figure class="px-4 pt-4 shrink-0">
-    <a
-      href={`/blog/${article.slug}`}
-      class="w-full relative overflow-hidden rounded-xl aspect-video block"
+<div class="perspective-1000 h-full group tilt-wrap">
+  <div
+    class="card-tilt glass-depth h-full flex flex-col relative preserve-3d transition-all duration-300 ease-out border border-base-100/20 overflow-hidden rounded-2xl"
+    style="transform-style: preserve-3d;"
+  >
+    <!-- Glare effect layer -->
+    <div
+      class="tilt-glare absolute inset-0 pointer-events-none z-50 opacity-0 transition-opacity duration-300 rounded-2xl mix-blend-overlay"
+      style="background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.2) 0%, transparent 50%);"
     >
-      {
-        article.thumbnail ? (
-          <img
-            src={article.thumbnail}
-            alt={article.title}
-            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-          />
-        ) : (
-          <div class="w-full h-full bg-base-300 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
-            <span class="text-4xl opacity-20">📝</span>
-          </div>
-        )
-      }
-      {
-        article.category && (
-          <div class="absolute top-2 left-2">
-            <span
-              class="badge badge-sm font-medium shadow-sm backdrop-blur-sm bg-base-100/80 border-none"
-              style={article.category.color ? `color: ${article.category.color}` : ""}
-            >
-              {article.category.name}
-            </span>
-          </div>
-        )
-      }
-    </a>
-  </figure>
+    </div>
 
-  <div class="card-body p-4 pt-4 flex-1 flex flex-col">
-    <a href={`/blog/${article.slug}`} class="block group-hover:text-primary transition-colors">
-      <h2 class="card-title text-xl font-bold line-clamp-2 md:leading-tight mb-2">
-        {article.title}
-      </h2>
-    </a>
-
-    <p class="text-sm opacity-70 line-clamp-3 mb-4 flex-1">
-      {article.excerpt}
-    </p>
-
-    <div class="flex items-center justify-between mt-auto pt-2 border-t border-base-300">
+    <figure class="px-4 pt-4 shrink-0 preserve-3d" style="transform: translateZ(30px);">
       <a
-        href={`/author/${article.author.username}`}
-        class="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        href={`/blog/${article.slug}`}
+        class="w-full relative overflow-hidden rounded-xl aspect-video block shadow-lg"
       >
-        <div class="avatar">
-          <div class="w-7 rounded-full bg-base-300">
+        {
+          article.thumbnail ? (
             <img
-              src={article.author.avatar ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(article.author.displayName)}&size=32`}
-              alt={article.author.displayName}
-              width="28"
-              height="28"
+              src={article.thumbnail}
+              alt={article.title}
+              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+              loading="lazy"
             />
-          </div>
-        </div>
-        <div class="flex flex-col">
-          <span class="text-xs font-medium">{article.author.displayName}</span>
-          <span class="text-[10px] opacity-60"
-            >{timeAgo(article.publishedAt || article.createdAt)}</span
-          >
-        </div>
+          ) : (
+            <div class="w-full h-full bg-base-300 flex items-center justify-center group-hover:scale-110 transition-transform duration-700 ease-out">
+              <span class="text-4xl opacity-20">📝</span>
+            </div>
+          )
+        }
+        {
+          article.category && (
+            <div class="absolute top-2 left-2" style="transform: translateZ(20px);">
+              <span
+                class="badge badge-sm font-medium shadow-md backdrop-blur-md bg-base-100/90 border-none px-3 py-3"
+                style={article.category.color ? `color: ${article.category.color}` : ""}
+              >
+                {article.category.name}
+              </span>
+            </div>
+          )
+        }
+      </a>
+    </figure>
+
+    <div
+      class="card-body p-5 flex-1 flex flex-col preserve-3d"
+      style="transform: translateZ(40px);"
+    >
+      <a href={`/blog/${article.slug}`} class="block group-hover:text-primary transition-colors">
+        <h2 class="card-title text-xl font-bold line-clamp-2 leading-tight mb-3 text-3d">
+          {article.title}
+        </h2>
       </a>
 
-      <div
-        class="text-[10px] opacity-50 flex items-center gap-1 font-medium bg-base-300/50 px-2 py-1 rounded"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-3 w-3"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+      <p class="text-sm opacity-80 line-clamp-3 mb-5 flex-1 font-medium leading-relaxed">
+        {article.excerpt}
+      </p>
+
+      <div class="flex items-center justify-between mt-auto pt-3 border-t border-base-content/10">
+        <a
+          href={`/author/${article.author.username}`}
+          class="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-        </svg>
-        {article.readingTime} mnt baca
+          <div class="avatar shadow-md rounded-full">
+            <div class="w-8 rounded-full bg-base-300 ring-2 ring-base-100">
+              <img
+                src={article.author.avatar ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(article.author.displayName)}&size=32`}
+                alt={article.author.displayName}
+                width="32"
+                height="32"
+              />
+            </div>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs font-bold">{article.author.displayName}</span>
+            <span class="text-[10px] opacity-60 font-medium tracking-wide uppercase"
+              >{timeAgo(article.publishedAt || article.createdAt)}</span
+            >
+          </div>
+        </a>
+
+        <div
+          class="text-[10px] opacity-70 flex items-center gap-1 font-bold bg-base-content/5 px-2.5 py-1.5 rounded-lg backdrop-blur-sm"
+        >
+          ⏱️ {article.readingTime} mnt
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  // 3D Tilt Effect Logic
+  const initTilt = () => {
+    const cards = document.querySelectorAll(".tilt-wrap");
+
+    cards.forEach((wrap) => {
+      const card = wrap.querySelector(".card-tilt") as HTMLElement;
+      const glare = wrap.querySelector(".tilt-glare") as HTMLElement;
+
+      if (!card || !glare) return;
+
+      wrap.addEventListener("mousemove", (e: any) => {
+        const rect = wrap.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+
+        const rotateX = ((y - centerY) / centerY) * -10; // Max rotation 10deg
+        const rotateY = ((x - centerX) / centerX) * 10;
+
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+        card.style.transition = "none";
+
+        // Glare effect follows mouse reversed
+        glare.style.opacity = "1";
+        glare.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.15) 0%, transparent 60%)`;
+      });
+
+      wrap.addEventListener("mouseleave", () => {
+        card.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)`;
+        card.style.transition = "transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+        glare.style.opacity = "0";
+      });
+
+      wrap.addEventListener("mouseenter", () => {
+        card.style.transition = "transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+      });
+    });
+  };
+
+  // Run on first load and after view transitions
+  initTilt();
+  document.addEventListener("astro:page-load", initTilt);
+</script>
